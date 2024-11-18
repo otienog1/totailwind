@@ -1,101 +1,160 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+import React, { useState, ChangeEvent } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import CSS_MAPPINGS from '@/instance/constants';
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+
+const CssToTailwindConverter: React.FC = () => {
+    const [html, setHtml] = useState<string>('');
+    const [css, setCss] = useState<string>('');
+    const [output, setOutput] = useState<string>('');
+    const [error, setError] = useState<string>('');
+
+    const processPixelValue = (value: string, property: string): string | null => {
+        const pxValuePattern = /(\d+)px/;
+        const match = value.match(pxValuePattern);
+
+        if (match) {
+            const px = parseInt(match[1]);
+            if (px <= 0) return `${property}-0`;
+            if (px <= 4) return `${property}-1`;
+            if (px <= 8) return `${property}-2`;
+            if (px <= 12) return `${property}-3`;
+            if (px <= 16) return `${property}-4`;
+            if (px <= 20) return `${property}-5`;
+            if (px <= 24) return `${property}-6`;
+            if (px <= 32) return `${property}-8`;
+            if (px <= 40) return `${property}-10`;
+            if (px <= 48) return `${property}-12`;
+            return `${property}-16`;
+        }
+        return null;
+    };
+
+    const cssToTailwind = (cssString: string): string => {
+        const rules = cssString
+            .split('}')
+            .map(rule => rule.trim())
+            .filter(Boolean);
+
+        const tailwindClasses = rules.flatMap(rule => {
+            const [selector, declarations] = rule.split('{');
+            const ruleDeclarations = declarations?.trim().split(';');
+
+            if (!ruleDeclarations) return [];
+
+            return ruleDeclarations.map(declaration => {
+                const [property, value] = declaration.split(':').map(part => part.trim());
+
+                if (property.startsWith('margin')) {
+                    return processPixelValue(value, 'm') || CSS_MAPPINGS[`${property}: ${value}`] || '';
+                }
+                if (property.startsWith('padding')) {
+                    return processPixelValue(value, 'p') || CSS_MAPPINGS[`${property}: ${value}`] || '';
+                }
+
+                return CSS_MAPPINGS[`${property}: ${value}`] || '';
+            }).filter(Boolean);
+        }).filter(Boolean);
+
+        return tailwindClasses.join(' ');
+    };
+
+    const processHTML = (htmlString: string, cssString: string): string => {
+        const tailwindClasses = cssToTailwind(cssString);
+
+        // Handle elements with existing classes
+        return htmlString
+            .replace(
+                /class="([^"]*)"/g,
+                (match: string, existingClasses: string) => {
+                    const combinedClasses = `${existingClasses} ${tailwindClasses}`.trim();
+                    return `class="${combinedClasses}"`;
+                }
+            )
+            .replace(
+                /<([a-zA-Z0-9]+)(?![^>]*class=)/g,
+                `<$1 class="${tailwindClasses}"`
+            );
+    };
+
+    const handleHTMLChange = (e: ChangeEvent<HTMLTextAreaElement>): void => {
+        setHtml(e.target.value);
+    };
+
+    const handleCSSChange = (e: ChangeEvent<HTMLTextAreaElement>): void => {
+        setCss(e.target.value);
+    };
+
+    const convertToTailwind = (): void => {
+        try {
+            const processedHtml = processHTML(html, css);
+            setOutput(processedHtml);
+            setError('');
+        } catch (err) {
+            setError('Error processing the input. Please check your HTML and CSS syntax.');
+            console.error(err);
+        }
+    };
+
+    return (
+        <div className="w-full max-w-4xl mx-auto p-4">
+            <Card className="mb-4 uppercase">
+                <CardHeader>
+                    <CardTitle>CSS to Tailwind Converter</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-2 uppercase">HTML Markup</label>
+                            <textarea
+                                className="w-full h-40 p-2 border font-mono text-sm"
+                                value={html}
+                                onChange={handleHTMLChange}
+                                placeholder='<div class="">Your HTML here</div>'
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-2 uppercase">CSS Styles</label>
+                            <textarea
+                                className="w-full h-40 p-2 border font-mono text-sm"
+                                value={css}
+                                onChange={handleCSSChange}
+                                placeholder="div { background-color: #ff0000; padding: 16px; }"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={convertToTailwind}
+                        className="mt-4 px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 transition uppercase text-xs"
+                    >
+                        Convert to Tailwind
+                    </button>
+
+                    {error && (
+                        <div className="mt-4 p-2 bg-red-100 text-red-700">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="mt-4">
+                        <label className="block text-sm font-medium mb-2 uppercase">
+                            Output HTML with Tailwind Classes
+                        </label>
+                        <textarea
+                            className="w-full h-40 p-2 border font-mono text-sm"
+                            value={output}
+                            readOnly
+                            placeholder="Converted HTML will appear here..."
+                        />
+                    </div>
+                </CardContent>
+            </Card>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
-}
+    );
+};
+
+export default CssToTailwindConverter;
