@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, ChangeEvent } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import CSS_MAPPINGS from '@/instance/constants';
 
 
