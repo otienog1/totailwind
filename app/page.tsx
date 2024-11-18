@@ -37,10 +37,9 @@ const CssToTailwindConverter: React.FC = () => {
             .split('}')
             .map(rule => rule.trim())
             .filter(Boolean);
-
         const tailwindClasses = rules.flatMap(rule => {
-            const [selector, declarations] = rule.split('{');
-            const ruleDeclarations = declarations?.trim().split(';');
+            const declarations = rule.split('{')[1]?.trim();
+            const ruleDeclarations = declarations?.split(';');
 
             if (!ruleDeclarations) return [];
 
